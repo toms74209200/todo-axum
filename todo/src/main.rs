@@ -1,7 +1,22 @@
-use axum::{routing::get, Router};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use thiserror::Error;
 
-async fn index() -> &'static str {
-    "Hello, world!"
+async fn index() -> Result<Response, MyError> {
+    Ok("Hello, world!".into_response())
+}
+
+#[derive(Error, Debug)]
+enum MyError {}
+
+impl IntoResponse for MyError {
+    fn into_response(self) -> Response {
+        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+    }
 }
 
 #[tokio::main]
