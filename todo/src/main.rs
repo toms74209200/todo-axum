@@ -1,13 +1,23 @@
+use axum::response::Json;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
+use serde::Serialize;
 use thiserror::Error;
 
-async fn index() -> Result<Response, MyError> {
-    Ok("Hello, world!".into_response())
+#[derive(Serialize)]
+struct Message {
+    message: String,
+}
+
+async fn index() -> Result<impl IntoResponse, MyError> {
+    let message = Message {
+        message: "Hello, world!".to_string(),
+    };
+    Ok(Json(message))
 }
 
 #[derive(Error, Debug)]
