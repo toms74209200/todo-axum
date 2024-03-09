@@ -9,15 +9,17 @@ use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Serialize)]
-struct Message {
-    message: String,
+struct Task {
+    id: u32,
+    name: String,
+    description: String,
+    deadline: String,
+    completed: bool,
 }
 
 async fn index() -> Result<impl IntoResponse, MyError> {
-    let message = Message {
-        message: "Hello, world!".to_string(),
-    };
-    Ok(Json(message))
+    let tasks: Vec<Task> = vec![];
+    Ok(Json(tasks))
 }
 
 #[derive(Error, Debug)]
