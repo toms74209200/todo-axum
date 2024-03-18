@@ -49,6 +49,23 @@ async fn add_post(
     Ok(Json(AddResponse { id }))
 }
 
+#[derive(Deserialize)]
+struct DeleteRequest {
+    id: u32,
+}
+
+async fn delete_todo(
+    State(tasks): State<Arc<Mutex<Vec<Task>>>>,
+    Json(req): Json<DeleteRequest>,
+) -> Result<impl IntoResponse, MyError> {
+    let id = req.id as usize;
+    if id >= tasks.lock().unwrap().len() {
+        return Ok(StatusCode::BAD_REQUEST);
+    }
+    tasks.lock().unwrap().remove(id);
+    Ok(StatusCode::NO_CONTENT)
+}
+
 #[derive(Error, Debug)]
 enum MyError {}
 
@@ -63,7 +80,7 @@ async fn main() {
     let tasks: Arc<Mutex<Vec<Task>>> = Arc::new(Mutex::new(vec![]));
 
     let app = Router::new()
-        .route("/", get(index).post(add_post))
+        .route("/", get(index).post(add_post).delete(delete_todo))
         .with_state(tasks);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
