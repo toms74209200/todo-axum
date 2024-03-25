@@ -1,0 +1,37 @@
+import requests
+
+from lib.utils import random_string
+
+
+def test_create_user_normal():
+    json = {
+        "email": f"{random_string(10)}@example.com",
+        "password": "password",
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 201
+    assert isinstance(response.json()["id"], int)
+
+def test_create_user_with_invalid_json_then_unprocessable_entity():
+    json = {
+        "invalid": "invalid",
+        "password": "password",
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 422
+
+def test_create_user_with_invalid_email_then_unprocessable_entity():
+    json = {
+        "email": 0,
+        "password": "password",
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 422
+
+def test_create_user_with_invalid_password_then_unprocessable_entity():
+    json = {
+        "email": f"{random_string(10)}@example.com",
+        "password": True,
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 422
