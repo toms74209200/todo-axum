@@ -1,4 +1,4 @@
-OPENAPI_SPEC = https://raw.githubusercontent.com/toms74209200/openapi-todo-example/master/reference/spec.yaml
+OPENAPI_SPEC = reference/spec.yaml
 
 .PHONY: openapi ## Generate rust code from OpenAPI spec
 openapi:
