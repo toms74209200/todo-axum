@@ -35,3 +35,19 @@ def test_create_user_with_invalid_password_then_unprocessable_entity():
     }
     response = requests.post("http://localhost:3000/users", json=json)
     assert response.status_code == 422
+
+def test_create_user_with_same_email_then_bad_request():
+    email = f"{random_string(10)}@example.com"
+    json = {
+        "email": email,
+        "password": "password1",
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 201
+    assert isinstance(response.json()["id"], int)
+
+    response = requests.post("http://localhost:3000/users", json={
+        "email": email,
+        "password": "password2",
+    })
+    assert response.status_code == 400

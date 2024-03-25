@@ -1,9 +1,4 @@
-use axum::{
-    async_trait,
-    extract::Host,
-    http::{Method, StatusCode},
-    response::{IntoResponse, Response},
-};
+use axum::{async_trait, extract::Host, http::Method};
 use axum_extra::extract::CookieJar;
 use openapi::{
     models::{self, PostUsers201Response},
@@ -13,7 +8,6 @@ use openapi::{
 };
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
-use thiserror::Error;
 
 #[derive(Serialize, Clone)]
 struct User {
@@ -42,21 +36,30 @@ impl Api for ApiImpl {
         _cookies: CookieJar,
         body: Option<models::UserCredentials>,
     ) -> Result<PostUsersResponse, String> {
-        match body {
+        let (email, password) = match body {
             None => Err("body is required".to_string()),
-            Some(body) => {
-                let id = self.users.lock().unwrap().len() as u32;
-                let user = User {
-                    id,
-                    email: body.email,
-                    password: body.password,
-                };
-                self.users.lock().unwrap().push(user);
-                Ok(PostUsersResponse::Status201(PostUsers201Response {
-                    id: Some(id as i64),
-                }))
-            }
+            Some(body) => Ok((body.email, body.password)),
+        }?;
+        if self
+            .users
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|user| user.email == email)
+        {
+            return Ok(PostUsersResponse::Status400_BadRequest);
         }
+        let id = self.users.lock().unwrap().len() as u32;
+        let user = User {
+            id,
+            email,
+            password,
+        };
+        self.users.lock().unwrap().push(user);
+
+        Ok(PostUsersResponse::Status201(PostUsers201Response {
+            id: Some(id as i64),
+        }))
     }
     async fn post_auth(
         &self,
@@ -113,15 +116,6 @@ struct Task {
     description: String,
     deadline: String,
     completed: bool,
-}
-
-#[derive(Error, Debug)]
-enum MyError {}
-
-impl IntoResponse for MyError {
-    fn into_response(self) -> Response {
-        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
-    }
 }
 
 #[tokio::main]
