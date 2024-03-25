@@ -51,3 +51,11 @@ def test_create_user_with_same_email_then_bad_request():
         "password": "password2",
     })
     assert response.status_code == 400
+
+def test_create_user_with_invalid_email_then_bad_request():
+    json = {
+        "email": "invalid",
+        "password": "password",
+    }
+    response = requests.post("http://localhost:3000/users", json=json)
+    assert response.status_code == 400

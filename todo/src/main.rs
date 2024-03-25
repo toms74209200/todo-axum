@@ -6,12 +6,14 @@ use openapi::{
     Api, DeleteTasksResponse, GetTasksResponse, PostAuthResponse, PostTasksResponse,
     PostUsersResponse, PutTasksResponse,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use validator::Validate;
 
-#[derive(Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Validate)]
 struct User {
     id: u32,
+    #[validate(email)]
     email: String,
     password: String,
 }
@@ -55,6 +57,9 @@ impl Api for ApiImpl {
             email,
             password,
         };
+        if user.validate().is_err() {
+            return Ok(PostUsersResponse::Status400_BadRequest);
+        }
         self.users.lock().unwrap().push(user);
 
         Ok(PostUsersResponse::Status201(PostUsers201Response {
