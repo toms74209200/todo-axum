@@ -8,6 +8,13 @@
 		"ghcr.io/devcontainers/features/python:1": {
 			"version": "latest"
 		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		},
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "21",
+			"jdkDistro": "open"
+		}
 	},
 
 	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
@@ -26,7 +33,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "rustc --version",
+	"postCreateCommand": "npm install -g @openapitools/openapi-generator-cli",
 
 	// Configure tool-specific properties.
 	"customizations": {
