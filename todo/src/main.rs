@@ -1,8 +1,4 @@
-use axum::{
-    async_trait,
-    extract::Host,
-    http::{HeaderMap, Method},
-};
+use axum::{async_trait, extract::Host, http::Method};
 use axum_extra::extract::CookieJar;
 use openapi::{
     models::{
@@ -16,6 +12,7 @@ use openapi::{
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use validator::Validate;
+mod jwt;
 
 #[derive(Deserialize, Serialize, Clone, Validate)]
 struct User {
