@@ -3,7 +3,7 @@ use axum_extra::extract::CookieJar;
 use openapi::{
     models::{
         self, DeleteTasksHeaderParams, GetTasksHeaderParams, PostTasksHeaderParams,
-        PostUsers201Response, PutTasksHeaderParams,
+        PostUsers201Response, PutTasksHeaderParams, Token,
     },
     server::new,
     Api, DeleteTasksResponse, GetTasksResponse, PostAuthResponse, PostTasksResponse,
@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use validator::Validate;
 mod jwt;
+
+const SECRET: &str = "secret";
 
 #[derive(Deserialize, Serialize, Clone, Validate)]
 struct User {
@@ -75,9 +77,24 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _body: Option<models::UserCredentials>,
+        body: Option<models::UserCredentials>,
     ) -> Result<PostAuthResponse, String> {
-        Err("not implemented yet".to_string())
+        let (email, password) = match body {
+            None => Err("body is required".to_string()),
+            Some(body) => Ok((body.email, body.password)),
+        }?;
+        let users_locked = self.users.lock().unwrap();
+
+        let user = users_locked
+            .iter()
+            .find(|user| user.email == email && user.password == password);
+        if let Some(user) = user {
+            let token = jwt::jwt::create_token(&SECRET.as_ref(), &user.id.to_string())
+                .map_err(|e| e.to_string())?;
+            Ok(PostAuthResponse::Status200(Token { token: Some(token) }))
+        } else {
+            Ok(PostAuthResponse::Status400_BadRequest)
+        }
     }
     async fn post_tasks(
         &self,
