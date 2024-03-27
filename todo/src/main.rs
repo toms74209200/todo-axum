@@ -1,7 +1,14 @@
-use axum::{async_trait, extract::Host, http::Method};
+use axum::{
+    async_trait,
+    extract::Host,
+    http::{HeaderMap, Method},
+};
 use axum_extra::extract::CookieJar;
 use openapi::{
-    models::{self, PostUsers201Response},
+    models::{
+        self, DeleteTasksHeaderParams, GetTasksHeaderParams, PostTasksHeaderParams,
+        PostUsers201Response, PutTasksHeaderParams,
+    },
     server::new,
     Api, DeleteTasksResponse, GetTasksResponse, PostAuthResponse, PostTasksResponse,
     PostUsersResponse, PutTasksResponse,
@@ -80,6 +87,7 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
+        _headers: PostTasksHeaderParams,
         _body: Option<models::PostTasksRequest>,
     ) -> Result<PostTasksResponse, String> {
         Err("not implemented yet".to_string())
@@ -89,6 +97,7 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
+        _headers: GetTasksHeaderParams,
         _query_params: models::GetTasksQueryParams,
     ) -> Result<GetTasksResponse, String> {
         Err("not implemented yet".to_string())
@@ -98,6 +107,7 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
+        _headers: DeleteTasksHeaderParams,
         _path_params: models::DeleteTasksPathParams,
     ) -> Result<DeleteTasksResponse, String> {
         Err("not implemented yet".to_string())
@@ -107,6 +117,7 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
+        _headers: PutTasksHeaderParams,
         _path_params: models::PutTasksPathParams,
         _body: Option<models::PutTasksRequest>,
     ) -> Result<PutTasksResponse, String> {
