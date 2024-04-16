@@ -6,10 +6,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    exp: usize,
-    iat: usize,
-    jti: String,
-    uid: String,
+    pub exp: usize,
+    pub iat: usize,
+    pub jti: String,
+    pub uid: String,
 }
 
 impl Claims {

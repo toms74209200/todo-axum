@@ -12,6 +12,7 @@ def test_create_user_normal():
     assert response.status_code == 201
     assert isinstance(response.json()["id"], int)
 
+
 def test_create_user_with_invalid_json_then_unprocessable_entity():
     json = {
         "invalid": "invalid",
@@ -19,6 +20,7 @@ def test_create_user_with_invalid_json_then_unprocessable_entity():
     }
     response = requests.post("http://localhost:3000/users", json=json)
     assert response.status_code == 422
+
 
 def test_create_user_with_invalid_email_then_unprocessable_entity():
     json = {
@@ -28,6 +30,7 @@ def test_create_user_with_invalid_email_then_unprocessable_entity():
     response = requests.post("http://localhost:3000/users", json=json)
     assert response.status_code == 422
 
+
 def test_create_user_with_invalid_password_then_unprocessable_entity():
     json = {
         "email": f"{random_string(10)}@example.com",
@@ -35,6 +38,7 @@ def test_create_user_with_invalid_password_then_unprocessable_entity():
     }
     response = requests.post("http://localhost:3000/users", json=json)
     assert response.status_code == 422
+
 
 def test_create_user_with_same_email_then_bad_request():
     email = f"{random_string(10)}@example.com"
@@ -46,11 +50,15 @@ def test_create_user_with_same_email_then_bad_request():
     assert response.status_code == 201
     assert isinstance(response.json()["id"], int)
 
-    response = requests.post("http://localhost:3000/users", json={
-        "email": email,
-        "password": "password2",
-    })
+    response = requests.post(
+        "http://localhost:3000/users",
+        json={
+            "email": email,
+            "password": "password2",
+        },
+    )
     assert response.status_code == 400
+
 
 def test_create_user_with_invalid_email_then_bad_request():
     json = {

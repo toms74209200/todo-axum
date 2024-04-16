@@ -10,7 +10,10 @@ use openapi::{
     PostUsersResponse, PutTasksResponse,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use validator::Validate;
 mod jwt;
 
@@ -27,6 +30,7 @@ struct User {
 #[derive(Clone)]
 struct ApiImpl {
     users: Arc<Mutex<Vec<User>>>,
+    tasks: Arc<Mutex<HashMap<u32, Vec<Task>>>>,
 }
 
 impl AsRef<ApiImpl> for ApiImpl {
@@ -101,10 +105,52 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _headers: PostTasksHeaderParams,
-        _body: Option<models::PostTasksRequest>,
+        headers: PostTasksHeaderParams,
+        body: Option<models::PostTasksRequest>,
     ) -> Result<PostTasksResponse, String> {
-        Err("not implemented yet".to_string())
+        let jwt = headers.authorization.replace("Bearer ", "");
+        let claims = match jwt::jwt::validate_token(&SECRET.as_ref(), &jwt) {
+            Ok(claims) => claims,
+            Err(_) => return Ok(PostTasksResponse::Status401_Unauthorized),
+        };
+        let user_id = match claims.uid.parse::<u32>() {
+            Ok(user_id) => user_id,
+            Err(_) => return Ok(PostTasksResponse::Status401_Unauthorized),
+        };
+
+        let users_locked = self.users.lock().unwrap();
+        if users_locked
+            .iter()
+            .find(|user| user.id == user_id)
+            .is_none()
+        {
+            return Ok(PostTasksResponse::Status400_BadRequest);
+        }
+
+        let (name, description, deadline, completed) = match body {
+            None => Err("body is required".to_string()),
+            Some(body) => Ok((
+                body.name,
+                body.description,
+                body.deadline,
+                body.completed.unwrap_or(false),
+            )),
+        }?;
+        let mut tasks_unlocked = self.tasks.lock().unwrap();
+        let mut user_tasks = tasks_unlocked.get(&user_id).unwrap_or(&vec![]).clone();
+        let task_id = user_tasks.len() as u32;
+        let task = Task {
+            id: task_id,
+            name,
+            description,
+            deadline: deadline.to_string(),
+            completed,
+        };
+        user_tasks.push(task);
+        tasks_unlocked.insert(user_id, user_tasks.clone());
+        Ok(PostTasksResponse::Status201(models::TaskId {
+            id: Some(task_id as i64),
+        }))
     }
     async fn get_tasks(
         &self,
@@ -152,6 +198,7 @@ struct Task {
 async fn main() {
     let router = new(ApiImpl {
         users: Arc::new(Mutex::new(vec![])),
+        tasks: Arc::new(Mutex::new(HashMap::new())),
     });
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
