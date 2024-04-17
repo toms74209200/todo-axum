@@ -57,9 +57,19 @@ def test_get_tasks_normal():
     assert get_response.json()[0]["completed"] == False
 
 
-def test_get_tasks_with_invalid_authorization_then_bad_request():
+def test_get_tasks_with_invalid_post_then_bad_request():
     response = requests.get("http://localhost:3000/tasks")
     assert response.status_code == 400
+
+
+def test_get_tasks_with_invalid_token_then_unauthorized():
+    response = requests.get(
+        "http://localhost:3000/tasks?userId=0",
+        headers={
+            "Authorization": "Bearer " + random_string(100),
+        },
+    )
+    assert response.status_code == 401
 
 
 def test_get_tasks_with_user_id_not_found_then_bad_request():
