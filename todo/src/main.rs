@@ -143,7 +143,7 @@ impl Api for ApiImpl {
             id: task_id,
             name,
             description,
-            deadline: deadline.to_string(),
+            deadline: deadline.to_rfc3339(),
             completed,
         };
         user_tasks.push(task);
@@ -157,10 +157,47 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _headers: GetTasksHeaderParams,
-        _query_params: models::GetTasksQueryParams,
+        headers: GetTasksHeaderParams,
+        query_params: models::GetTasksQueryParams,
     ) -> Result<GetTasksResponse, String> {
-        Err("not implemented yet".to_string())
+        let jwt = headers.authorization.replace("Bearer ", "");
+        match jwt::jwt::validate_token(&SECRET.as_ref(), &jwt) {
+            Ok(_) => {}
+            Err(_) => return Ok(GetTasksResponse::Status401_Unauthorized),
+        };
+        let user_id = query_params.user_id as u32;
+
+        let users_locked = self.users.lock().unwrap();
+        if users_locked
+            .iter()
+            .find(|user| user.id == user_id)
+            .is_none()
+        {
+            return Ok(GetTasksResponse::Status400_BadRequest);
+        }
+
+        let tasks_unlocked = self
+            .tasks
+            .lock()
+            .unwrap()
+            .get(&user_id)
+            .unwrap_or(&vec![])
+            .clone();
+        let tasks: Vec<models::Task> = tasks_unlocked
+            .iter()
+            .map(|task| models::Task {
+                id: Some(task.id as i64),
+                name: Some(task.name.clone()),
+                description: Some(task.description.clone()),
+                deadline: match chrono::DateTime::parse_from_rfc3339(&task.deadline) {
+                    Ok(dt) => Some(dt.with_timezone(&chrono::Utc)),
+                    Err(_) => None,
+                },
+                completed: Some(task.completed),
+            })
+            .collect();
+
+        Ok(GetTasksResponse::Status200(tasks.clone()))
     }
     async fn delete_tasks(
         &self,
