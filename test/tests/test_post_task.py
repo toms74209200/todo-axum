@@ -96,7 +96,7 @@ def test_post_task_with_invalid_deadline_then_unprocessable_entity():
     assert response.status_code == 422
 
 
-def test_post_task_with_invalid_token_then_bad_request():
+def test_post_task_with_invalid_token_then_unauthorized():
     response = requests.post(
         "http://localhost:3000/tasks",
         headers={
