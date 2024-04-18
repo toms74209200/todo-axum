@@ -204,10 +204,40 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _headers: DeleteTasksHeaderParams,
-        _path_params: models::DeleteTasksPathParams,
+        headers: DeleteTasksHeaderParams,
+        path_params: models::DeleteTasksPathParams,
     ) -> Result<DeleteTasksResponse, String> {
-        Err("not implemented yet".to_string())
+        let jwt = headers.authorization.replace("Bearer ", "");
+        let claims = match jwt::jwt::validate_token(&SECRET.as_ref(), &jwt) {
+            Ok(claims) => claims,
+            Err(_) => return Ok(DeleteTasksResponse::Status401_Unauthorized),
+        };
+        let user_id = match claims.uid.parse::<u32>() {
+            Ok(user_id) => user_id,
+            Err(_) => return Ok(DeleteTasksResponse::Status401_Unauthorized),
+        };
+
+        let users_locked = self.users.lock().unwrap();
+        if users_locked
+            .iter()
+            .find(|user| user.id == user_id)
+            .is_none()
+        {
+            return Ok(DeleteTasksResponse::Status400_BadRequest);
+        }
+
+        let task_id = path_params.task_id;
+        let mut tasks_unlocked = self.tasks.lock().unwrap();
+        if tasks_unlocked.get(&user_id).is_none() {
+            return Ok(DeleteTasksResponse::Status404_NotFound);
+        }
+        tasks_unlocked
+            .get_mut(&user_id)
+            .map(|tasks| {
+                tasks.retain(|task| task.id != task_id as u32);
+            })
+            .unwrap_or(());
+        Ok(DeleteTasksResponse::Status204_DeleteSucceeded)
     }
     async fn put_tasks(
         &self,
