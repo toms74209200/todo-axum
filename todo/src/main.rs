@@ -244,11 +244,89 @@ impl Api for ApiImpl {
         _method: Method,
         _host: Host,
         _cookies: CookieJar,
-        _headers: PutTasksHeaderParams,
-        _path_params: models::PutTasksPathParams,
-        _body: Option<models::PutTasksRequest>,
+        headers: PutTasksHeaderParams,
+        path_params: models::PutTasksPathParams,
+        body: Option<models::PutTasksRequest>,
     ) -> Result<PutTasksResponse, String> {
-        Err("not implemented yet".to_string())
+        let jwt = headers.authorization.replace("Bearer ", "");
+        let claims = match jwt::jwt::validate_token(&SECRET.as_ref(), &jwt) {
+            Ok(claims) => claims,
+            Err(_) => return Ok(PutTasksResponse::Status401_Unauthorized),
+        };
+        let user_id = match claims.uid.parse::<u32>() {
+            Ok(user_id) => user_id,
+            Err(_) => return Ok(PutTasksResponse::Status401_Unauthorized),
+        };
+
+        let users_locked = self.users.lock().unwrap();
+        if users_locked
+            .iter()
+            .find(|user| user.id == user_id)
+            .is_none()
+        {
+            return Ok(PutTasksResponse::Status400_BadRequest);
+        }
+
+        let task_id = path_params.task_id as u32;
+        let (name, description, deadline, completed) = match body {
+            None => Err("body is required".to_string()),
+            Some(body) => Ok((
+                body.name,
+                body.description,
+                body.deadline,
+                body.completed.unwrap_or(false),
+            )),
+        }?;
+        let mut tasks_unlocked = self.tasks.lock().unwrap();
+        if tasks_unlocked.get(&user_id).is_none() {
+            return Ok(PutTasksResponse::Status404_NotFound);
+        }
+        let task_to_update = tasks_unlocked
+            .get(&user_id)
+            .unwrap()
+            .iter()
+            .find(|task| task.id == task_id)
+            .unwrap();
+        let task_updated = Task {
+            id: task_id,
+            name: name
+                .clone()
+                .get_or_insert(task_to_update.name.clone())
+                .clone(),
+            description: description
+                .clone()
+                .get_or_insert(task_to_update.description.clone())
+                .clone(),
+            deadline: if deadline.is_none() {
+                task_to_update.deadline.clone()
+            } else {
+                deadline.unwrap().to_rfc3339()
+            },
+            completed,
+        };
+        tasks_unlocked
+            .get_mut(&user_id)
+            .map(|tasks| {
+                tasks.retain(|task| task.id != task_id);
+                tasks.push(task_updated.clone());
+            })
+            .unwrap_or(());
+        tasks_unlocked
+            .get_mut(&user_id)
+            .unwrap()
+            .sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(PutTasksResponse::Status200(models::Task {
+            id: Some(task_id as i64),
+            name: Some(task_updated.clone().name),
+            description: Some(task_updated.clone().description),
+            deadline: match chrono::DateTime::parse_from_rfc3339(
+                task_updated.clone().deadline.as_str(),
+            ) {
+                Ok(dt) => Some(dt.with_timezone(&chrono::Utc)),
+                Err(_) => None,
+            },
+            completed: Some(task_updated.clone().completed),
+        }))
     }
 }
 
