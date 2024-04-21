@@ -54,6 +54,10 @@ test$ pip install -r requirements.txt
 test/openapi_gen$ pip install -r requirements.txt
 ```
 
+```bash
+test/openapi_gen$ python setup.py install --user
+```
+
 Run tests.
 
 ```bash
