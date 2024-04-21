@@ -38,10 +38,20 @@ todo$ cargo run
 
 ### Test Web API
 
+Generate Python code from OpenAPI spec.
+
+```bash
+$ openapi-generator-cli generate -i reference/spec.yaml -g python -o ./test/openapi_gen
+```
+
 Install dependencies for testing.
 
 ```bash
 test$ pip install -r requirements.txt
+```
+
+```bash
+test/openapi_gen$ pip install -r requirements.txt
 ```
 
 Run tests.
