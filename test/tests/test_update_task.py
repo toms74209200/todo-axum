@@ -1,52 +1,44 @@
 import datetime
+
 import requests
 
+from lib.api_config import DOMAIN
 from lib.utils import random_string
+from openapi_gen.openapi_client.api.auth_api import AuthApi
+from openapi_gen.openapi_client.api.tasks_api import TasksApi
+from openapi_gen.openapi_client.api.users_api import UsersApi
+from openapi_gen.openapi_client.api_client import ApiClient
+from openapi_gen.openapi_client.configuration import Configuration
+
+api_client = ApiClient(Configuration(host=f"http://{DOMAIN}"))
 
 
 def test_update_task_normal():
     email = f"{random_string(10)}@example.com"
     password = "password"
 
-    user_response = requests.post(
-        "http://localhost:3000/users",
-        json={
-            "email": email,
-            "password": password,
-        },
+    user_response = UsersApi(api_client).post_users(
+        user_credentials={"email": email, "password": password}
     )
-    assert user_response.status_code == 201
-
-    auth_response = requests.post(
-        "http://localhost:3000/auth",
-        json={
-            "email": email,
-            "password": password,
-        },
+    auth_response = AuthApi(api_client).post_auth(
+        user_credentials={"email": email, "password": password}
     )
-    assert auth_response.status_code == 200
-    token = auth_response.json()["token"]
+    token = auth_response.token
 
     deadline = datetime.datetime.now() + datetime.timedelta(days=1)
-    task_response = requests.post(
-        "http://localhost:3000/tasks",
-        headers={
-            "Authorization": f"Bearer {token}",
-        },
-        json={
+    tasks_api = TasksApi(api_client)
+    task_response = tasks_api.post_tasks(
+        authorization=f"Bearer {token}",
+        post_tasks_request={
             "name": "task1",
             "description": "description1",
             "deadline": deadline.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "completed": False,
         },
     )
-    assert task_response.status_code == 201
-    requests.post(
-        "http://localhost:3000/tasks",
-        headers={
-            "Authorization": f"Bearer {token}",
-        },
-        json={
+    tasks_api.post_tasks(
+        authorization=f"Bearer {token}",
+        post_tasks_request={
             "name": "task2",
             "description": "description2",
             "deadline": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -59,7 +51,7 @@ def test_update_task_normal():
     deadline = datetime.datetime.now() + datetime.timedelta(days=2)
     completed = True
     update_response = requests.put(
-        f"http://localhost:3000/tasks/{task_response.json()['id']}",
+        f"http://{DOMAIN}/tasks/{task_response.id}",
         headers={
             "Authorization": f"Bearer {token}",
         },
@@ -78,7 +70,7 @@ def test_update_task_normal():
     assert update_response.json()["completed"] == completed
 
     get_response = requests.get(
-        f"http://localhost:3000/tasks?userId={user_response.json()['id']}",
+        f"http://{DOMAIN}/tasks?userId={user_response.id}",
         headers={
             "Authorization": f"Bearer {token}",
         },
@@ -92,13 +84,13 @@ def test_update_task_normal():
 
 
 def test_update_tasks_with_invalid_request_then_bad_request():
-    update_response = requests.put("http://localhost:3000/tasks/1", json={})
+    update_response = requests.put(f"http://{DOMAIN}/tasks/1", json={})
     assert update_response.status_code == 400
 
 
 def test_update_tasks_with_invalid_token_then_unauthorized():
     update_response = requests.put(
-        "http://localhost:3000/tasks/1",
+        f"http://{DOMAIN}/tasks/1",
         headers={
             "Authorization": "Bearer " + random_string(100),
         },
@@ -111,27 +103,16 @@ def test_update_tasks_with_invalid_id_then_not_found():
     email = f"{random_string(10)}@example.com"
     password = "password"
 
-    user_response = requests.post(
-        "http://localhost:3000/users",
-        json={
-            "email": email,
-            "password": password,
-        },
+    UsersApi(api_client).post_users(
+        user_credentials={"email": email, "password": password}
     )
-    assert user_response.status_code == 201
-
-    auth_response = requests.post(
-        "http://localhost:3000/auth",
-        json={
-            "email": email,
-            "password": password,
-        },
+    auth_response = AuthApi(api_client).post_auth(
+        user_credentials={"email": email, "password": password}
     )
-    assert auth_response.status_code == 200
-    token = auth_response.json()["token"]
+    token = auth_response.token
 
     update_response = requests.put(
-        "http://localhost:3000/tasks/1",
+        f"http://{DOMAIN}/tasks/1",
         headers={
             "Authorization": f"Bearer {token}",
         },
