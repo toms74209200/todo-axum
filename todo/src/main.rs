@@ -9,28 +9,20 @@ use openapi::{
     Api, DeleteTasksResponse, GetTasksResponse, PostAuthResponse, PostTasksResponse,
     PostUsersResponse, PutTasksResponse,
 };
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use validator::Validate;
+mod domains;
 mod jwt;
 
 const SECRET: &str = "secret";
 
-#[derive(Deserialize, Serialize, Clone, Validate)]
-struct User {
-    id: u32,
-    #[validate(email)]
-    email: String,
-    password: String,
-}
-
 #[derive(Clone)]
 struct ApiImpl {
-    users: Arc<Mutex<Vec<User>>>,
-    tasks: Arc<Mutex<HashMap<u32, Vec<Task>>>>,
+    users: Arc<Mutex<Vec<domains::User>>>,
+    tasks: Arc<Mutex<HashMap<u32, Vec<domains::Task>>>>,
 }
 
 impl AsRef<ApiImpl> for ApiImpl {
@@ -62,7 +54,7 @@ impl Api for ApiImpl {
             return Ok(PostUsersResponse::Status400_BadRequest);
         }
         let id = self.users.lock().unwrap().len() as u32;
-        let user = User {
+        let user = domains::User {
             id,
             email,
             password,
@@ -139,7 +131,7 @@ impl Api for ApiImpl {
         let mut tasks_unlocked = self.tasks.lock().unwrap();
         let mut user_tasks = tasks_unlocked.get(&user_id).unwrap_or(&vec![]).clone();
         let task_id = user_tasks.len() as u32;
-        let task = Task {
+        let task = domains::Task {
             id: task_id,
             name,
             description,
@@ -287,7 +279,7 @@ impl Api for ApiImpl {
             .iter()
             .find(|task| task.id == task_id)
             .unwrap();
-        let task_updated = Task {
+        let task_updated = domains::Task {
             id: task_id,
             name: name
                 .clone()
@@ -328,15 +320,6 @@ impl Api for ApiImpl {
             completed: Some(task_updated.clone().completed),
         }))
     }
-}
-
-#[derive(Serialize, Clone)]
-struct Task {
-    id: u32,
-    name: String,
-    description: String,
-    deadline: String,
-    completed: bool,
 }
 
 #[tokio::main]
