@@ -4,11 +4,11 @@ TODO web app in Rust/axum and OpenAPI Generator
 
 ## Environments
 
-- OpenAPI Generator 7.4.0
+- OpenAPI Generator 7.7.0
   - Node.js
   - Java
-- Rust 1.76.0
-  - axum 0.7.4
+- Rust 1.79.0
+  - axum 0.7.5
 - Python/pytest(for Web API testing)
 
 You can set up the environments by using VSCode DevContainer.

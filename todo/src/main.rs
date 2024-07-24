@@ -1,13 +1,18 @@
 use axum::{async_trait, extract::Host, http::Method};
 use axum_extra::extract::CookieJar;
 use openapi::{
+    apis::{
+        auth::{Auth, PostAuthResponse},
+        tasks::{
+            DeleteTasksResponse, GetTasksResponse, PostTasksResponse, PutTasksResponse, Tasks,
+        },
+        users::{PostUsersResponse, Users},
+    },
     models::{
         self, DeleteTasksHeaderParams, GetTasksHeaderParams, PostTasksHeaderParams,
         PostUsers201Response, PutTasksHeaderParams, Token,
     },
     server::new,
-    Api, DeleteTasksResponse, GetTasksResponse, PostAuthResponse, PostTasksResponse,
-    PostUsersResponse, PutTasksResponse,
 };
 use std::{
     collections::HashMap,
@@ -32,7 +37,35 @@ impl AsRef<ApiImpl> for ApiImpl {
 }
 
 #[async_trait]
-impl Api for ApiImpl {
+impl Auth for ApiImpl {
+    async fn post_auth(
+        &self,
+        _method: Method,
+        _host: Host,
+        _cookies: CookieJar,
+        body: Option<models::UserCredentials>,
+    ) -> Result<PostAuthResponse, String> {
+        let (email, password) = match body {
+            None => Err("body is required".to_string()),
+            Some(body) => Ok((body.email, body.password)),
+        }?;
+        let users_locked = self.users.lock().unwrap();
+
+        let user = users_locked
+            .iter()
+            .find(|user| user.email == email && user.password == password);
+        if let Some(user) = user {
+            let token = jwt::jwt::create_token(&SECRET.as_ref(), &user.id.to_string())
+                .map_err(|e| e.to_string())?;
+            Ok(PostAuthResponse::Status200(Token { token: Some(token) }))
+        } else {
+            Ok(PostAuthResponse::Status400_BadRequest)
+        }
+    }
+}
+
+#[async_trait]
+impl Users for ApiImpl {
     async fn post_users(
         &self,
         _method: Method,
@@ -68,30 +101,10 @@ impl Api for ApiImpl {
             id: Some(id as i64),
         }))
     }
-    async fn post_auth(
-        &self,
-        _method: Method,
-        _host: Host,
-        _cookies: CookieJar,
-        body: Option<models::UserCredentials>,
-    ) -> Result<PostAuthResponse, String> {
-        let (email, password) = match body {
-            None => Err("body is required".to_string()),
-            Some(body) => Ok((body.email, body.password)),
-        }?;
-        let users_locked = self.users.lock().unwrap();
+}
 
-        let user = users_locked
-            .iter()
-            .find(|user| user.email == email && user.password == password);
-        if let Some(user) = user {
-            let token = jwt::jwt::create_token(&SECRET.as_ref(), &user.id.to_string())
-                .map_err(|e| e.to_string())?;
-            Ok(PostAuthResponse::Status200(Token { token: Some(token) }))
-        } else {
-            Ok(PostAuthResponse::Status400_BadRequest)
-        }
-    }
+#[async_trait]
+impl Tasks for ApiImpl {
     async fn post_tasks(
         &self,
         _method: Method,
